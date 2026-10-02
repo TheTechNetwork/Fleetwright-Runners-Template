@@ -1,0 +1,40 @@
+# The runner workflows, checked the way Fleetwright checks its own: the YAML
+# parsed properly, every `run:` script through its shell's syntax check, and
+# no expression where GitHub will not evaluate one. With Fleetwright's own
+# checker, not a copy of it, because a copied checker is a different checker
+# (scripts/check-workflows.mjs in TheTechNetwork/Fleetwright says why).
+#
+# These are the workflows whose failures cost the most: one of them enrols a
+# paid-for machine into somebody's fleet before it reaches the line that
+# breaks.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  workflows:
+    # HERE ONLY. A repository made from this template gets this file too, and
+    # has no reason to spend a run on it.
+    if: github.repository == 'TheTechNetwork/Fleetwright-Runners-Template'
+    runs-on: ubuntu-26.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7.0.1
+        with:
+          repository: TheTechNetwork/Fleetwright
+          path: .fleetwright
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '24.21.0'
+      - name: Install the checker's one dependency
+        run: npm --prefix .fleetwright ci --ignore-scripts --no-audit --no-fund
+      - name: Check the workflows and the shared action
+        run: |
+          node .fleetwright/scripts/check-workflows.mjs .github/workflows
+          node .fleetwright/scripts/check-workflows.mjs .github/actions/fleet-host

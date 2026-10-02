@@ -1,0 +1,34 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "The same rules as Fleetwright's own renovate.json, for the files that moved",
+    "here from its install/runner-central/: pin every version, let a release",
+    "soak three days before proposing it, and never hold a security fix.",
+    "",
+    "The Claude Code CLI a runner installs is pinned in two places, the shared",
+    "action and the Windows workflow, and kept current by the regex manager",
+    "below. Unpinned, every runner took whatever was latest that morning, and",
+    "the fleet ran a different version from the image it is supposed to mirror."
+  ],
+  "extends": ["config:recommended"],
+  "timezone": "America/Chicago",
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "vulnerabilityAlerts": {
+    "minimumReleaseAge": null,
+    "schedule": ["at any time"]
+  },
+  "rangeStrategy": "pin",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/runner-windows\\.yml$/",
+        "/^\\.github/actions/fleet-host/action\\.yml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s+npm install -g @anthropic-ai/claude-code@(?<currentValue>\\S+)"
+      ]
+    }
+  ]
+}
