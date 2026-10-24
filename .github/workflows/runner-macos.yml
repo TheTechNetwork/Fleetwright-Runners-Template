@@ -41,6 +41,21 @@ on:
         required: false
         default: 'main'
         type: string
+      image:
+        description: 'Which GitHub image to run on. The newest is the default.'
+        required: false
+        default: 'xcode-27'
+        # A CHOICE, NOT A STRING. The value becomes `runs-on`, and an open
+        # string would let a dispatch name any label this repository can
+        # reach, a self-hosted machine included. GitHub refuses a dispatch
+        # whose value is not listed here, before any job exists.
+        # xcode-27 is macOS 26 with Xcode 27 and its simulators, the iPhone Duo
+        # among them; macos-26 carries Xcode 26 alone.
+        type: choice
+        options:
+          - 'xcode-27'
+          - 'macos-26'
+          - 'macos-15'
 
 permissions:
   contents: read
@@ -58,7 +73,7 @@ concurrency:
 
 jobs:
   host:
-    runs-on: macos-26
+    runs-on: ${{ inputs.image || 'xcode-27' }}
     # GitHub's own ceiling, as a BACKSTOP only. The `minutes` input is what
     # actually ends the job, so this is the value that applies when something
     # has hung rather than the one that governs a normal run.

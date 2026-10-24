@@ -47,6 +47,18 @@ on:
         required: false
         default: 'main'
         type: string
+      image:
+        description: 'Which GitHub image to run on. The newest is the default.'
+        required: false
+        default: 'ubuntu-26.04'
+        # A CHOICE, NOT A STRING. The value becomes `runs-on`, and an open
+        # string would let a dispatch name any label this repository can
+        # reach, a self-hosted machine included. GitHub refuses a dispatch
+        # whose value is not listed here, before any job exists.
+        type: choice
+        options:
+          - 'ubuntu-26.04'
+          - 'ubuntu-24.04'
 
 permissions:
   contents: read
@@ -64,7 +76,7 @@ concurrency:
 
 jobs:
   host:
-    runs-on: ubuntu-26.04
+    runs-on: ${{ inputs.image || 'ubuntu-26.04' }}
     # GitHub's own ceiling, as a BACKSTOP only. The `minutes` input is what
     # actually ends the job, so this is the value that applies when something
     # has hung rather than the one that governs a normal run.

@@ -27,12 +27,19 @@ the fleet minted for you, naming that repository, for that platform's workflow.
 See [your own runner repository](https://github.com/TheTechNetwork/Fleetwright/blob/main/docs/runner-central.md#your-own-runner-repository).
 
 ```
-.github/workflows/runner-macos.yml      macos-26
-.github/workflows/runner-linux.yml      ubuntu-26.04
-.github/workflows/runner-windows.yml    windows-2025 — NOT PROVEN, see below
-.github/workflows/runner-android.yml    ubuntu-26.04 + SDK + KVM
+.github/workflows/runner-macos.yml      xcode-27, macos-26, macos-15
+.github/workflows/runner-linux.yml      ubuntu-26.04, ubuntu-24.04
+.github/workflows/runner-windows.yml    windows-2025, windows-2022 — NOT PROVEN, see below
+.github/workflows/runner-android.yml    ubuntu-26.04, ubuntu-24.04, + SDK + KVM
 .github/actions/fleet-host/action.yml   everything the first, second and fourth share
 ```
+
+The first image on each line is the default, and the default is always the
+newest. Each workflow's `image` input is a choice, so a dispatch can pick only
+one of the images listed in that file. The fleet sends `image` only when the
+person asking picked one; otherwise the workflow's own default applies.
+`xcode-27` is macOS 26 with Xcode 27, and it is the only one with the iPhone
+Duo simulator.
 
 The file names are load-bearing: `src/core/runners.js` in Fleetwright maps a platform to one of
 them, so `runner-macos.yml` is what `provision { platform: 'macos' }` dispatches.
