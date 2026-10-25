@@ -186,8 +186,14 @@ runs:
         # first one inherits this too. Passwordless sudo is a GitHub runner's;
         # where it fails this says so and carries on. Windows has no renice,
         # and is left as it was.
+        #
+        # AN ABSOLUTE PRIORITY, NOT `-n`. On macOS `renice -n` is an increment,
+        # and a GitHub runner's job already runs at -10: with `-n -10` the
+        # services landed at -20 and the sessions, ten below them, at -10 —
+        # still above everything else on the box, which is the opposite of the
+        # point. `renice <prio> -p` is absolute on both BSD and util-linux.
         if command -v renice >/dev/null 2>&1; then
-          sudo -n renice -n -10 -p "$HUB" >/dev/null 2>&1 \
+          sudo -n renice -10 -p "$HUB" >/dev/null 2>&1 \
             || echo "::warning::Could not raise the session manager's priority, so a heavy session can make this machine stop answering the fleet."
         fi
         for _ in $(seq 1 30); do
@@ -214,7 +220,7 @@ runs:
         node bin/fleetwright-sidecar > >(tee -a "$FLEETWRIGHT_LOG_DIR/fleetwright-sidecar.log") 2>&1 &
         SIDECAR=$!
         if command -v renice >/dev/null 2>&1; then
-          sudo -n renice -n -10 -p "$SIDECAR" >/dev/null 2>&1 \
+          sudo -n renice -10 -p "$SIDECAR" >/dev/null 2>&1 \
             || echo "::warning::Could not raise the sidecar's priority, so a heavy session can make this machine stop answering the fleet."
         fi
         echo "::notice::Enrolled for $MINUTES minutes, under the name the coordinator printed above — not $FLEETWRIGHT_HOST_ID, which is only what this job called itself before it was told."

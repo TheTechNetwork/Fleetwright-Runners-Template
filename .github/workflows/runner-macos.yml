@@ -50,11 +50,17 @@ on:
         # reach, a self-hosted machine included. GitHub refuses a dispatch
         # whose value is not listed here, before any job exists.
         # xcode-27 is macOS 26 with Xcode 27 and its simulators, the iPhone Duo
-        # among them; macos-26 carries Xcode 26 alone.
+        # among them; macos-26 carries Xcode 26 alone. The -xlarge pair is the
+        # same image on GitHub's larger runner: 5 cores and 14 GB against the
+        # standard 3 and 7, and billed per minute. One xcodebuild plus a first
+        # simulator boot took a standard runner to a load of 633 and a gigabyte
+        # of swap, and the fleet lost sight of it for six minutes.
         type: choice
         options:
           - 'xcode-27'
+          - 'xcode-27-xlarge'
           - 'macos-26'
+          - 'macos-26-xlarge'
           - 'macos-15'
 
 permissions:
