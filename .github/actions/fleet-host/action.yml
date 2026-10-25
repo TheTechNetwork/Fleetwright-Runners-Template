@@ -123,6 +123,13 @@ runs:
         # box, where `/logs hub` and `/logs sidecar` read them (FLEETWRIGHT_LOG_DIR
         # in TheTechNetwork/Fleetwright, src/core/logs.js).
         FLEETWRIGHT_LOG_DIR: ${{ runner.temp }}/logs
+        # SESSIONS RUN TEN BELOW THE SERVICES, which run ten above normal (the
+        # renice below), so a session lands back at normal priority and its
+        # build, its simulator and everything else it starts yield to the two
+        # processes the fleet sees this machine through. One xcodebuild and a
+        # first simulator boot took a macOS runner to a load of 167, the
+        # session manager stopped answering, and the fleet lost the session.
+        FLEETWRIGHT_SESSION_NICE: '10'
         # EVERY ABSOLUTE DEFAULT HAS TO MOVE, not just the obvious one. These
         # default to /var/lib and /run, which on a hosted runner are either
         # unwritable without sudo or simply absent — and the failure is `enrol`
@@ -175,6 +182,14 @@ runs:
         # not as the background job, so the kills below still reach node.
         node bin/fleetwright serve > >(tee -a "$FLEETWRIGHT_LOG_DIR/fleetwright.log") 2>&1 &
         HUB=$!
+        # Before any session exists, so the tmux server the hub starts for the
+        # first one inherits this too. Passwordless sudo is a GitHub runner's;
+        # where it fails this says so and carries on. Windows has no renice,
+        # and is left as it was.
+        if command -v renice >/dev/null 2>&1; then
+          sudo -n renice -n -10 -p "$HUB" >/dev/null 2>&1 \
+            || echo "::warning::Could not raise the session manager's priority, so a heavy session can make this machine stop answering the fleet."
+        fi
         for _ in $(seq 1 30); do
           curl -sf -o /dev/null "http://127.0.0.1:8790/healthz" && break || sleep 1
         done
@@ -198,6 +213,10 @@ runs:
         set +e
         node bin/fleetwright-sidecar > >(tee -a "$FLEETWRIGHT_LOG_DIR/fleetwright-sidecar.log") 2>&1 &
         SIDECAR=$!
+        if command -v renice >/dev/null 2>&1; then
+          sudo -n renice -n -10 -p "$SIDECAR" >/dev/null 2>&1 \
+            || echo "::warning::Could not raise the sidecar's priority, so a heavy session can make this machine stop answering the fleet."
+        fi
         echo "::notice::Enrolled for $MINUTES minutes, under the name the coordinator printed above — not $FLEETWRIGHT_HOST_ID, which is only what this job called itself before it was told."
         # SAID EITHER WAY, and said differently. A runner with no key is not
         # broken, it is unusable — and those need different sentences, because
