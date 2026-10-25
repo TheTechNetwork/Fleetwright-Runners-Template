@@ -118,6 +118,11 @@ runs:
         FLEETWRIGHT_SANDBOX: '0'
         FLEETWRIGHT_WORKDIR: ${{ runner.temp }}/work
         FLEETWRIGHT_STATE_DIR: ${{ runner.temp }}/state
+        # WHERE BOTH SERVICES' OUTPUT GOES, besides this step's log. This log is
+        # on GitHub, where nobody in the fleet can read it; the files are on the
+        # box, where `/logs hub` and `/logs sidecar` read them (FLEETWRIGHT_LOG_DIR
+        # in TheTechNetwork/Fleetwright, src/core/logs.js).
+        FLEETWRIGHT_LOG_DIR: ${{ runner.temp }}/logs
         # EVERY ABSOLUTE DEFAULT HAS TO MOVE, not just the obvious one. These
         # default to /var/lib and /run, which on a hosted runner are either
         # unwritable without sudo or simply absent — and the failure is `enrol`
@@ -149,7 +154,7 @@ runs:
         FLEETWRIGHT_RUNNER_BROKER: ${{ runner.temp }}/state/broker.sock
       run: |
         set -euo pipefail
-        mkdir -p "$FLEETWRIGHT_WORKDIR" "$FLEETWRIGHT_STATE_DIR"
+        mkdir -p "$FLEETWRIGHT_WORKDIR" "$FLEETWRIGHT_STATE_DIR" "$FLEETWRIGHT_LOG_DIR"
         chmod 700 "$FLEETWRIGHT_STATE_DIR"
 
         # GIT ASKS THE BROKER, for github.com and nothing else, and says which
@@ -165,7 +170,10 @@ runs:
 
         # The session manager first: the sidecar talks to it on loopback and is
         # useless without it.
-        node bin/fleetwright serve &
+        # Through tee, so it is in this step's log AND on the box. `$!` is
+        # node's own pid either way: the tee runs as a process substitution,
+        # not as the background job, so the kills below still reach node.
+        node bin/fleetwright serve > >(tee -a "$FLEETWRIGHT_LOG_DIR/fleetwright.log") 2>&1 &
         HUB=$!
         for _ in $(seq 1 30); do
           curl -sf -o /dev/null "http://127.0.0.1:8790/healthz" && break || sleep 1
@@ -181,14 +189,14 @@ runs:
           echo "::error::No ticket and no FLEETWRIGHT_RUNNER_TOKEN secret, so the fleet cannot tell whose runner this is. Ask through the app or MCP, or set the secret to run it by hand."
           exit 1
         fi
-        node bin/fleetwright-sidecar enrol-actions "$WHOSE"
+        node bin/fleetwright-sidecar enrol-actions "$WHOSE" 2>&1 | tee -a "$FLEETWRIGHT_LOG_DIR/fleetwright-sidecar.log"
 
         # THE JOB ENDING IS THE DISCONNECT, and the disconnect is what retires
         # this host and revokes its key. So the sidecar runs for exactly as long
         # as we mean to be a host, and exiting normally IS the cleanup — there
         # is no step to remember.
         set +e
-        node bin/fleetwright-sidecar &
+        node bin/fleetwright-sidecar > >(tee -a "$FLEETWRIGHT_LOG_DIR/fleetwright-sidecar.log") 2>&1 &
         SIDECAR=$!
         echo "::notice::Enrolled for $MINUTES minutes, under the name the coordinator printed above — not $FLEETWRIGHT_HOST_ID, which is only what this job called itself before it was told."
         # SAID EITHER WAY, and said differently. A runner with no key is not
