@@ -31,7 +31,7 @@ jobs:
           path: .fleetwright
       - uses: actions/setup-node@v7.0.0
         with:
-          node-version: '24.21.0'
+          node-version: '26.13.1'
       - name: Install the checker's one dependency
         run: npm --prefix .fleetwright ci --ignore-scripts --no-audit --no-fund
       - name: Check the workflows and the shared action
